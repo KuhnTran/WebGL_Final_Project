@@ -1,0 +1,175 @@
+<!DOCTYPE HTML> 
+<html lang="en"> 
+<head>
+<title>Final Project </title>
+<meta charset="utf-8"> 
+</head>
+
+<!-- vertex shader -->
+<script type="x-shader/x-vertex" id="vshader-source">
+	attribute vec3 a_coords;
+	attribute vec3 a_normal;
+	
+	uniform mat4 modelview;
+	uniform mat4 projection;
+
+	varying vec3 myNormals;
+	varying vec4 view_coords;
+	
+	varying mat4 myModelview;
+	void main()
+	{
+		vec4 fourDCoords = vec4(a_coords,1.0);
+		view_coords = modelview*fourDCoords;
+		gl_Position = projection*view_coords;
+		
+		myModelview = modelview;
+
+		myNormals = a_normal;
+	}
+</script>
+
+<!-- fragment shader -->
+<script type="x-shader/x-fragment" id="fshader-source">
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+       precision highp float;
+    #else
+       precision mediump float;
+    #endif
+
+	uniform mat3 normalMatrix;
+	
+	uniform vec4 diffuseColor;
+	uniform vec3 specularColor; 
+	
+	uniform int isNight;
+	uniform int isSun;
+	uniform int isLamp;
+	
+	uniform float specularExponent;
+	
+	uniform vec4 lightPosition;
+
+	uniform vec4 lampPosition;
+	uniform vec4 headlight1;
+	uniform vec4 headlight2;
+
+	uniform vec4 headlight1Direction;
+	uniform vec4 headlight2Direction;
+
+	varying vec3 myNormals; 
+	varying vec4 view_coords;
+	varying mat4 myModelview;
+	void main()
+	{
+		//-----------------calculate ambient-------------------
+		vec3 myAmbientColor;
+		myAmbientColor = vec3(0.1*diffuseColor.rgb);
+	
+		
+		//-----------------calculate diffuse-------------------
+		vec3 myDiffuseColor = vec3(0.0,0.0,0.0);
+		vec3 N = normalize(normalMatrix*myNormals);
+
+		vec3 lamp = vec3(1.0,1.0,1.0);
+		vec3 lampDistance;
+		
+		vec3 myHeadlight1 = vec3(1.0,1.0,1.0);
+		vec3 headlight1Distance;
+
+		vec3 myHeadlight2 = vec3(1.0,1.0,1.0);
+		vec3 headlight2Distance;
+
+		vec3 L = vec3(1.0,1.0,1.0);
+		vec3 lightDistance;
+		
+		if (lightPosition.w == 0.0)
+		{
+			lightDistance = lightPosition.xyz;
+			L = normalize(lightDistance);
+		}
+		else 
+		{
+			lightDistance = 
+				lightPosition.xyz/lightPosition.w - view_coords.xyz;
+			L = normalize(lightDistance);
+		}	
+		
+		float d;
+		if (isNight == 0)
+		{		
+			if (dot(L,N) <= 0.0) myDiffuseColor = vec3(0.0,0.0,0.0);
+			else myDiffuseColor = 0.8*dot(L,N)*diffuseColor.rgb;
+		}
+		else 
+		{
+			lampDistance = lampPosition.xyz/lampPosition.w - view_coords.xyz;
+			lamp = normalize(lampDistance);
+			d = length(lamp);
+			if (dot(lamp,N) <= 0.0) myDiffuseColor = vec3(0.0,0.0,0.0);
+			else myDiffuseColor = 0.8*dot(lamp,N)/(d+d*d)*diffuseColor.rgb;
+
+
+			headlight1Distance = headlight1.xyz/headlight1.w - view_coords.xyz;
+			myHeadlight1 = normalize(headlight1Distance);
+
+			headlight2Distance = headlight2.xyz/headlight2.w - view_coords.xyz;
+			myHeadlight2 = normalize(headlight2Distance);
+			
+			vec4 mvHeadlight1Dir = headlight1Direction-headlight1;
+			vec4 normalHeadlight1Dir = normalize(mvHeadlight1Dir);
+			vec4 light1ToA = view_coords - headlight1;
+			vec4 normalLight1ToA = normalize(light1ToA); 
+
+			if(acos(dot(normalHeadlight1Dir,normalLight1ToA)) < 0.6)
+				if(dot(myHeadlight1,N) > 0.0) myDiffuseColor += 0.8*dot(myHeadlight1,N)*diffuseColor.rgb;
+			
+			vec4 mvHeadlight2Dir = headlight2Direction-headlight2;
+			vec4 normalHeadlight2Dir = normalize(mvHeadlight2Dir);
+			vec4 light2ToA = view_coords - headlight2;
+			vec4 normalLight2ToA = normalize(light2ToA); 
+
+			if(acos(dot(normalHeadlight2Dir,normalLight2ToA)) < 0.6)
+				if(dot(myHeadlight2,N) > 0.0) myDiffuseColor += 0.8*dot(myHeadlight2,N)*diffuseColor.rgb;
+		}
+	
+		
+		gl_FragColor = vec4(myAmbientColor + myDiffuseColor, diffuseColor.a);
+		if (isSun == 1)
+		{
+			if (isNight == 1) gl_FragColor = vec4(0,0,0,1);
+			else gl_FragColor = vec4(1,1,0.5,1);
+		}
+		
+		if (isLamp == 1)
+		{
+			if (isNight == 1) gl_FragColor = vec4(1,1,0.5,1);
+		}
+	}
+
+</script>
+
+<script src="trackball-rotator.js"></script>
+<script src="gl-matrix-min.js"></script>
+<script src="webgl-utils.js"></script>
+<script src="models.js"></script>
+<script src = "final.js"></script>
+
+<body onload="init()">
+<form id="input_form">
+<fieldset>
+	Name: Khoa Tran<br/>
+	Student ID: 48468198<br/>
+	I did not use specular lighting because it makes everything looks like metal, loosing the cartooney feel of the scene.<br/>
+	Feel free to rotate around with trackball rotator.<br/>
+</fieldset>
+</form>
+<fieldset>
+<label><b>Animate</b><input type="checkbox" id="animateBox"></label>
+</fieldset>
+<div id="canvas-holder">
+   <canvas width=800 height=800 id="myGLCanvas"</canvas>
+</div>
+
+</body>
+</html>
